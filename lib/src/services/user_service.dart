@@ -19,4 +19,8 @@ class UserService {
     final doc = await _db.collection('users').doc(uid).get();
     return doc.data();
   }
+
+  Stream<QuerySnapshot> usersStream() {
+    return _db.collection('users').orderBy('username').snapshots();
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hyper_racing/src/screens/chat_home_screen.dart';
 import '../widgets/input_field.dart';
 import '../widgets/primary_button.dart';
 import '../services/auth_service.dart';
@@ -49,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+      Navigator.pushReplacementNamed(context, ChatHomeScreen.routeName);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
