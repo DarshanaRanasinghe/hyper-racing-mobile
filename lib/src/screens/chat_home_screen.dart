@@ -74,13 +74,14 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                 ),
                 const SizedBox(height: 14),
 
+                // Search (username only)
                 TextField(
                   controller: _searchCtrl,
                   onChanged: (v) =>
                       setState(() => _query = v.trim().toLowerCase()),
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Search users...',
+                    hintText: 'Search username...',
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.12),
                     prefixIcon: const Icon(Icons.search, color: Colors.white70),
@@ -94,6 +95,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
 
                 const SizedBox(height: 14),
 
+                // Horizontal user avatars
                 SizedBox(
                   height: 54,
                   child: StreamBuilder<QuerySnapshot>(
@@ -122,8 +124,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                           .where(
                             (u) => _query.isEmpty
                                 ? true
-                                : u.username.toLowerCase().contains(_query) ||
-                                      u.email.toLowerCase().contains(_query),
+                                : u.username.toLowerCase().contains(_query),
                           )
                           .toList();
 
@@ -169,6 +170,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
 
           const SizedBox(height: 10),
 
+          // User list (username only)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _users.usersStream(),
@@ -192,8 +194,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                     .where(
                       (u) => _query.isEmpty
                           ? true
-                          : u.username.toLowerCase().contains(_query) ||
-                                u.email.toLowerCase().contains(_query),
+                          : u.username.toLowerCase().contains(_query),
                     )
                     .toList();
 
@@ -207,6 +208,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final u = users[i];
+
                     return ListTile(
                       tileColor: AppColors.card,
                       shape: RoundedRectangleBorder(
@@ -233,9 +235,9 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      subtitle: Text(
-                        u.email,
-                        style: const TextStyle(color: Colors.white70),
+                      subtitle: const Text(
+                        'Tap to chat',
+                        style: TextStyle(color: Colors.white70),
                       ),
                       trailing: const Icon(
                         Icons.chevron_right,
