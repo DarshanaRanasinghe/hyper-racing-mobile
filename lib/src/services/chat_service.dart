@@ -8,6 +8,10 @@ class ChatService {
     return '${pair[0]}_${pair[1]}';
   }
 
+  Stream<DocumentSnapshot> chatDocStream(String chatId) {
+    return _db.collection('chats').doc(chatId).snapshots();
+  }
+
   Stream<QuerySnapshot> messagesStream({required String chatId}) {
     return _db
         .collection('chats')

@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import '../models/app_user.dart';
+import '../models/chat_message.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
-import '../models/chat_message.dart';
+import '../services/user_service.dart';
 import '../theme.dart';
 
 class ChatScreenArgs {
@@ -22,6 +25,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _auth = AuthService();
   final _chat = ChatService();
+  final _users = UserService();
   final _msgCtrl = TextEditingController();
   bool _sending = false;
 
@@ -48,6 +52,20 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  String _formatLastSeen(Timestamp ts) {
+    final dt = ts.toDate();
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  String _formatTime(Timestamp ts) {
+    final dt = ts.toDate();
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)!.settings.arguments as ChatScreenArgs;
@@ -61,19 +79,61 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: AppColors.purpleAccent.withOpacity(0.25),
-              child: Text(
-                args.otherName.isNotEmpty
-                    ? args.otherName[0].toUpperCase()
-                    : '?',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(args.otherName),
-          ],
+        title: StreamBuilder<DocumentSnapshot>(
+          stream: _users.userDocStream(args.otherUid),
+          builder: (context, snap) {
+            AppUser? other;
+            if (snap.hasData && snap.data!.exists) {
+              other = AppUser.fromMap(
+                args.otherUid,
+                snap.data!.data() as Map<String, dynamic>,
+              );
+            }
+
+            final photoUrl = other?.photoUrl ?? '';
+            final online = other?.online ?? false;
+            final lastSeen = other?.lastSeen;
+
+            final statusText = online
+                ? 'Online'
+                : (lastSeen == null
+                      ? 'Offline'
+                      : 'Last seen ${_formatLastSeen(lastSeen)}');
+
+            return Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColors.purpleAccent.withOpacity(0.25),
+                  backgroundImage: photoUrl.trim().isNotEmpty
+                      ? NetworkImage(photoUrl.trim())
+                      : null,
+                  child: photoUrl.trim().isEmpty
+                      ? Text(
+                          args.otherName.isNotEmpty
+                              ? args.otherName[0].toUpperCase()
+                              : '?',
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(args.otherName, overflow: TextOverflow.ellipsis),
+                      Text(
+                        statusText,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         actions: const [
           Icon(Icons.call),
@@ -112,7 +172,6 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-
           SafeArea(
             top: false,
             child: Container(
@@ -175,13 +234,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
-  }
-
-  String _formatTime(Timestamp ts) {
-    final dt = ts.toDate();
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
   }
 }
 

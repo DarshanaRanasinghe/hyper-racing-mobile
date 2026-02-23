@@ -51,16 +51,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordCtrl.text,
       );
 
+      // ✅ Create user profile in Firestore with presence fields
       await _users.createUserProfile(
         uid: cred.user!.uid,
         username: _usernameCtrl.text,
         email: _emailCtrl.text,
+        photoUrl: "", // you can add a real URL later
       );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration successful. Please login.')),
       );
+
       Navigator.pop(context); // back to login
     } catch (e) {
       if (!mounted) return;
