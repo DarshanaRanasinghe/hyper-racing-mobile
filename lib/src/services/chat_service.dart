@@ -49,4 +49,24 @@ class ChatService {
       'createdAt': now,
     });
   }
+
+  Future<void> clearChat({required String chatId}) async {
+    final chatRef = _db.collection('chats').doc(chatId);
+    final msgCol = chatRef.collection('messages');
+
+    // Delete messages in batches (safe for many messages)
+    while (true) {
+      final snap = await msgCol.limit(200).get();
+      if (snap.docs.isEmpty) break;
+
+      final batch = _db.batch();
+      for (final d in snap.docs) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    }
+
+    // Delete chat document itself
+    await chatRef.delete();
+  }
 }

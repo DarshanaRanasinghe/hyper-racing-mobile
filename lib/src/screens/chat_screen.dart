@@ -27,6 +27,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _chat = ChatService();
   final _users = UserService();
   final _msgCtrl = TextEditingController();
+
   bool _sending = false;
 
   @override
@@ -35,10 +36,25 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _send(String chatId, String meUid, String otherUid) async {
-    final text = _msgCtrl.text;
-    _msgCtrl.clear();
+  String _formatTime(Timestamp ts) {
+    final dt = ts.toDate();
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
 
+  String _formatLastSeen(Timestamp ts) {
+    final dt = ts.toDate();
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  Future<void> _send(String chatId, String meUid, String otherUid) async {
+    final text = _msgCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    _msgCtrl.clear();
     setState(() => _sending = true);
     try {
       await _chat.sendMessage(
@@ -52,18 +68,31 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  String _formatLastSeen(Timestamp ts) {
-    final dt = ts.toDate();
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
+  Future<void> _clearChat(String chatId) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Clear chat?'),
+        content: const Text('This will delete all messages in this chat.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
 
-  String _formatTime(Timestamp ts) {
-    final dt = ts.toDate();
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
+    if (ok != true) return;
+
+    await _chat.clearChat(chatId: chatId);
+
+    if (!mounted) return;
+    Navigator.pop(context); // go back to home after clearing
   }
 
   @override
@@ -78,6 +107,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatId = _chat.chatIdFor(me.uid, args.otherUid);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: StreamBuilder<DocumentSnapshot>(
           stream: _users.userDocStream(args.otherUid),
@@ -90,7 +120,7 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             }
 
-            final photoUrl = other?.photoUrl ?? '';
+            final photoUrl = (other?.photoUrl ?? '').trim();
             final online = other?.online ?? false;
             final lastSeen = other?.lastSeen;
 
@@ -103,15 +133,19 @@ class _ChatScreenState extends State<ChatScreen> {
             return Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.purpleAccent.withOpacity(0.25),
-                  backgroundImage: photoUrl.trim().isNotEmpty
-                      ? NetworkImage(photoUrl.trim())
+                  backgroundColor: Colors.white.withOpacity(0.25),
+                  backgroundImage: photoUrl.isNotEmpty
+                      ? NetworkImage(photoUrl)
                       : null,
-                  child: photoUrl.trim().isEmpty
+                  child: photoUrl.isEmpty
                       ? Text(
                           args.otherName.isNotEmpty
                               ? args.otherName[0].toUpperCase()
                               : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         )
                       : null,
                 ),
@@ -135,13 +169,21 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           },
         ),
-        actions: const [
-          Icon(Icons.call),
-          SizedBox(width: 14),
-          Icon(Icons.videocam),
-          SizedBox(width: 10),
+
+        // ✅ No call/video icons
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'clear') _clearChat(chatId);
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(value: 'clear', child: Text('Clear chat')),
+            ],
+          ),
         ],
       ),
+
       body: Column(
         children: [
           Expanded(
@@ -152,8 +194,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final docs = snap.data!.docs;
-                final msgs = docs.map((d) => ChatMessage.fromDoc(d)).toList();
+                final msgs = snap.data!.docs
+                    .map((d) => ChatMessage.fromDoc(d))
+                    .toList();
 
                 return ListView.builder(
                   reverse: true,
@@ -162,6 +205,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, i) {
                     final m = msgs[i];
                     final isMe = m.senderId == me.uid;
+
                     return _Bubble(
                       text: m.text,
                       isMe: isMe,
@@ -172,10 +216,11 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
+
           SafeArea(
             top: false,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               decoration: const BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.only(
@@ -190,13 +235,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       controller: _msgCtrl,
                       minLines: 1,
                       maxLines: 4,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: AppColors.text),
                       decoration: InputDecoration(
                         hintText: 'Type your message...',
+                        hintStyle: const TextStyle(color: AppColors.subtext),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.08),
+                        fillColor: AppColors.bubbleOther,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -224,7 +270,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(Icons.send),
+                          : const Icon(Icons.send, color: Colors.white),
                     ),
                   ),
                 ],
@@ -253,10 +299,10 @@ class _Bubble extends StatelessWidget {
     final align = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
 
     final radius = BorderRadius.only(
-      topLeft: const Radius.circular(16),
-      topRight: const Radius.circular(16),
-      bottomLeft: Radius.circular(isMe ? 16 : 6),
-      bottomRight: Radius.circular(isMe ? 6 : 16),
+      topLeft: const Radius.circular(18),
+      topRight: const Radius.circular(18),
+      bottomLeft: Radius.circular(isMe ? 18 : 8),
+      bottomRight: Radius.circular(isMe ? 8 : 18),
     );
 
     return Column(
@@ -265,20 +311,18 @@ class _Bubble extends StatelessWidget {
         Container(
           margin: const EdgeInsets.symmetric(vertical: 6),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          constraints: const BoxConstraints(maxWidth: 280),
+          constraints: const BoxConstraints(maxWidth: 300),
           decoration: BoxDecoration(
-            color: isMe
-                ? AppColors.purple.withOpacity(0.55)
-                : Colors.white.withOpacity(0.10),
+            color: isMe ? AppColors.bubbleMe : AppColors.bubbleOther,
             borderRadius: radius,
           ),
-          child: Text(text, style: const TextStyle(color: Colors.white)),
+          child: Text(text, style: const TextStyle(color: AppColors.text)),
         ),
         Padding(
           padding: const EdgeInsets.only(left: 6, right: 6, bottom: 2),
           child: Text(
             timeText,
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
+            style: const TextStyle(color: AppColors.subtext, fontSize: 11),
           ),
         ),
       ],

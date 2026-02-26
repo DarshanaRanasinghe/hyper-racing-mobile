@@ -4,7 +4,6 @@ import '../widgets/input_field.dart';
 import '../widgets/primary_button.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   static const routeName = '/';

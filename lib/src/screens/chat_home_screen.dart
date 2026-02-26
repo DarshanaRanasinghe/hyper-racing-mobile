@@ -42,11 +42,11 @@ class _ChatHomeScreenState extends State<ChatHomeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // online when app is in foreground
     if (state == AppLifecycleState.resumed) _setOnline(true);
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached)
+        state == AppLifecycleState.detached) {
       _setOnline(false);
+    }
   }
 
   Future<void> _setOnline(bool online) async {
@@ -124,15 +124,16 @@ class _ChatHomeScreenState extends State<ChatHomeScreen>
 
           const SizedBox(height: 10),
 
-          // WhatsApp-like chat list (users + last message)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _users.usersStream(),
               builder: (context, snap) {
-                if (snap.hasError)
+                if (snap.hasError) {
                   return Center(child: Text('Error: ${snap.error}'));
-                if (!snap.hasData)
+                }
+                if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 final users = snap.data!.docs
                     .where((d) => d.id != me.uid)
@@ -149,8 +150,9 @@ class _ChatHomeScreenState extends State<ChatHomeScreen>
                     )
                     .toList();
 
-                if (users.isEmpty)
+                if (users.isEmpty) {
                   return const Center(child: Text('No users found'));
+                }
 
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
@@ -205,12 +207,15 @@ class _ChatListTile extends StatelessWidget {
       builder: (context, snap) {
         String lastMsg = 'Tap to chat';
         String timeText = '';
+
         if (snap.hasData && snap.data!.exists) {
           final data = snap.data!.data() as Map<String, dynamic>;
           lastMsg = (data['lastMessage'] ?? 'Tap to chat').toString();
           final ts = data['lastMessageAt'];
           if (ts is Timestamp) timeText = _formatChatTime(ts);
         }
+
+        final photoUrl = (user.photoUrl ?? '').trim();
 
         return ListTile(
           tileColor: AppColors.card,
@@ -222,15 +227,16 @@ class _ChatListTile extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppColors.purpleAccent.withOpacity(0.20),
-                backgroundImage:
-                    (user.photoUrl != null && user.photoUrl!.trim().isNotEmpty)
-                    ? NetworkImage(user.photoUrl!.trim())
+                backgroundImage: photoUrl.isNotEmpty
+                    ? NetworkImage(photoUrl)
                     : null,
-                child: (user.photoUrl == null || user.photoUrl!.trim().isEmpty)
+                child: photoUrl.isEmpty
                     ? Text(
                         user.username.isNotEmpty
                             ? user.username[0].toUpperCase()
                             : '?',
+                        // ✅ on light UI, use dark text inside avatar only if you want
+                        // but usually white looks better on purpleAccent bg
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -247,7 +253,7 @@ class _ChatListTile extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: user.online ? Colors.greenAccent : Colors.white24,
+                    color: user.online ? Colors.green : Colors.grey.shade400,
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.card, width: 2),
                   ),
@@ -255,28 +261,33 @@ class _ChatListTile extends StatelessWidget {
               ),
             ],
           ),
+
+          // ✅ BLACK username
           title: Text(
             user.username,
             style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+              fontWeight: FontWeight.w700,
             ),
           ),
+
+          // ✅ Gray subtitle (Online or last message)
           subtitle: Text(
             user.online ? 'Online' : lastMsg,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: AppColors.subtext),
           ),
+
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 timeText,
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                style: const TextStyle(color: AppColors.subtext, fontSize: 12),
               ),
               const SizedBox(height: 4),
-              const Icon(Icons.chevron_right, color: Colors.white70),
+              const Icon(Icons.chevron_right, color: AppColors.subtext),
             ],
           ),
           onTap: onTap,

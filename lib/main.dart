@@ -25,7 +25,7 @@ class HyperRacingApp extends StatelessWidget {
     return MaterialApp(
       title: 'Hyper Racing',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
 
       // ✅ If user already logged in -> go to chat home
       // ✅ If not -> go to login
